@@ -36,6 +36,16 @@ public class PlayerController : MonoBehaviour {
     private float _wallJumpCounter;
     private float _wallJumpDirection;
 
+    [Header("Punch Variables")]
+    [SerializeField] private float _punchRange;
+    [SerializeField] private int _punchDamage;
+    [SerializeField] private float _punchCooldown;
+    [SerializeField] private Transform _punchStartPosition;
+    [SerializeField] private LayerMask _punchableLayer;
+    [SerializeField] private LineRenderer _punchLine;
+    [SerializeField] private float _punchLineTime;
+    private float _punchCooldownCounter = 0;
+
     /**
      * Crisp Movement
      * Animations
@@ -55,11 +65,11 @@ public class PlayerController : MonoBehaviour {
         FlipPlayer();
         Jump();
         Dash();
-
+        Punch();
         WallSliding();
         WallJumping();
     }
-
+    #region Movement
     private float _horizontalInput;
     private void Movement() {
         if(_isWallJumping && _isDashing) {
@@ -160,11 +170,47 @@ public class PlayerController : MonoBehaviour {
     private bool IsWalled() {
         return Physics2D.OverlapCircle(_wallCheck.position, 0.2f, _wallLayer);
     }
+    #endregion
+    #region Fight Stuff
+    
+    private void Punch() {
+        _punchCooldownCounter += Time.deltaTime;
+        if(Input.GetKeyDown(KeyCode.X)) {
+            if(_punchCooldownCounter >= _punchCooldown) {
+                _punchCooldownCounter = 0;
 
+                Vector3 dir = new Vector3(_isFacingRight ? 1 : -1, 0, 0);
+                RaycastHit2D hit = Physics2D.Raycast(_punchStartPosition.position, dir, _punchRange, _punchableLayer);
+                _punchLine.enabled = true;
+                _punchLine.SetPosition(0, _punchStartPosition.position);
+                _punchLine.SetPosition(1, dir * _punchRange + _punchStartPosition.position);
+                CancelInvoke(nameof(RemovePunchLine));
+                Invoke(nameof(RemovePunchLine), _punchLineTime);
+                if(hit) {
+                    if(hit.transform.TryGetComponent(out Punchable pa)) {
+                        pa.GetPunched(transform, _punchDamage);
+                    }
+                }
+            }
+        }
+    }
+    private void RemovePunchLine() {
+        _punchLine.enabled = false;
+    }
     public void DoDamage(int damage) {
         _health -= damage;
         if(_health < 0f) {
             Debug.LogWarning("Player died :(");
         }
     }
+    
+    #endregion
+    #region Collsions
+    private void OnTriggerEnter2D(Collider2D collision) {
+        if(collision.gameObject.TryGetComponent(out Collectable c)) {
+            c.Collect();
+        }
+    }
+    #endregion
+
 }

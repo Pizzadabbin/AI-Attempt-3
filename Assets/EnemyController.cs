@@ -31,4 +31,8 @@ public class EnemyController : MonoBehaviour {
             collision.gameObject.GetComponent<PlayerController>().DoDamage(_damage);
         }
     }
+
+    public void DoDamage(Transform sender, int amount) {
+        Debug.Log(gameObject.name + " got punched from: " + sender.name + " with: " + amount + " damage");
+    }
 }
