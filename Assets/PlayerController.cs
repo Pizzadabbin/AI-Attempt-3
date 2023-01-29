@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
+using UnityEngine.UI;
 public class PlayerController : MonoBehaviour {
     private Rigidbody2D _rb;
 
@@ -46,6 +46,9 @@ public class PlayerController : MonoBehaviour {
     [SerializeField] private float _punchLineTime;
     private float _punchCooldownCounter = 0;
 
+    [Header("User Interface")]
+    [SerializeField] private Slider _healthbar;
+
     /**
      * Crisp Movement
      * Animations
@@ -58,6 +61,9 @@ public class PlayerController : MonoBehaviour {
 
     void Start() {
         _rb = GetComponent<Rigidbody2D>();
+
+        _healthbar.maxValue = _health;
+        _healthbar.value = _health;
     }
 
     void Update() {
@@ -172,7 +178,6 @@ public class PlayerController : MonoBehaviour {
     }
     #endregion
     #region Fight Stuff
-    
     private void Punch() {
         _punchCooldownCounter += Time.deltaTime;
         if(Input.GetKeyDown(KeyCode.X)) {
@@ -199,6 +204,7 @@ public class PlayerController : MonoBehaviour {
     }
     public void DoDamage(int damage) {
         _health -= damage;
+        _healthbar.value = _health;
         if(_health < 0f) {
             Debug.LogWarning("Player died :(");
         }
