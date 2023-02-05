@@ -21,6 +21,7 @@ public class PlayerController : MonoBehaviour {
     [SerializeField] private float _dashForce;
     [SerializeField] private float _dashDuration;
     [SerializeField] private float _dashCooldown;
+    [SerializeField] private GameObject _dashShadowPrefab;
     private float _dashCooldownCounter;
     private float _dashTimer;
     private bool _isDashing;
@@ -81,7 +82,7 @@ public class PlayerController : MonoBehaviour {
     #region Movement
     private float _horizontalInput;
     private void Movement() {
-        if(_isWallJumping && _isDashing) {
+        if(_isWallJumping || _isDashing) {
             return;
         }
 
@@ -109,13 +110,35 @@ public class PlayerController : MonoBehaviour {
             _isDashing = true;
             _dashTimer = _dashDuration;
             _dashCooldownCounter = 0;
+            foreach(GameObject g in _shadows) {
+                if(g != null) {
+                    Destroy(g);
+                }
+            }
+            _shadows.Clear();
         }
         if(_isDashing) {
             _rb.velocity = new Vector2(_horizontalInput * _dashForce, _rb.velocity.y);
             _dashTimer -= Time.deltaTime;
+
+            DashShadow();
+
             if(_dashTimer <= 0) {
                 _isDashing = false;
             }
+        }
+    }
+
+    private List<GameObject> _shadows = new();
+    private void DashShadow() {
+        GameObject newShadow = Instantiate(_dashShadowPrefab, transform.position, Quaternion.identity);
+        Destroy(newShadow, 1f);
+        _shadows.Add(newShadow);
+
+        Color c = newShadow.GetComponent<SpriteRenderer>().color;
+        foreach(GameObject g in _shadows) {
+            c.a -= 0.05f;
+            g.GetComponent<SpriteRenderer>().color = c;
         }
     }
 
@@ -157,6 +180,7 @@ public class PlayerController : MonoBehaviour {
 
         if(Input.GetButtonDown("Jump") && _wallJumpCounter > 0f) {
             _isWallJumping = true;
+            Debug.Log(_wallJumpDirection * _wallJumpForce.x);
             _rb.velocity = new Vector2(_wallJumpDirection * _wallJumpForce.x, _wallJumpForce.y);
             _wallJumpCounter = 0;
 

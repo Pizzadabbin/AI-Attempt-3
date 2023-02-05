@@ -8,7 +8,7 @@ public class Collectable : MonoBehaviour {
         Collect();
         _onCollect?.Invoke();
         if(TryGetComponent<GameObjectSpawner>(out GameObjectSpawner gos)) {
-            gos.Spawn();
+            gos.Spawn(transform.position, true, 10);
         }
     }
 }
