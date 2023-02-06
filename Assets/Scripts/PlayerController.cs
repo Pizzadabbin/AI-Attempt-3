@@ -130,15 +130,27 @@ public class PlayerController : MonoBehaviour {
     }
 
     private List<GameObject> _shadows = new();
+    private const float _dashShadowCooldown = 0.05f;
+    private float _dashShadowCounter = 0f;
     private void DashShadow() {
+        _dashShadowCounter += Time.deltaTime;
+        if(_dashShadowCounter < _dashShadowCooldown) {
+            return;
+        }
+        _dashShadowCounter -= _dashShadowCooldown;
         GameObject newShadow = Instantiate(_dashShadowPrefab, transform.position, Quaternion.identity);
         Destroy(newShadow, 1f);
-        _shadows.Add(newShadow);
+        _shadows.Insert(0, newShadow);
 
         Color c = newShadow.GetComponent<SpriteRenderer>().color;
         foreach(GameObject g in _shadows) {
-            c.a -= 0.05f;
+            c.a -= 0.1f;
             g.GetComponent<SpriteRenderer>().color = c;
+            foreach(Transform t in g.transform) {
+                if(t.TryGetComponent<SpriteRenderer>(out SpriteRenderer sr)) {
+                    sr.color = c;
+                }
+            }
         }
     }
 
