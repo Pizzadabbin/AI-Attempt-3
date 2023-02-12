@@ -38,31 +38,27 @@ public class PlayerController : MonoBehaviour {
     private float _wallJumpDirection;
 
     [Header("Punch Variables")]
-    [SerializeField] private float _punchRange;
-    [SerializeField] private int _punchDamage;
+    public int PunchDamage;
     [SerializeField] private float _punchCooldown;
-    [SerializeField] private Transform _punchStartPosition;
-    [SerializeField] private LayerMask _punchableLayer;
-    [SerializeField] private LineRenderer _punchLine;
-    [SerializeField] private float _punchLineTime;
     private float _punchCooldownCounter = 0;
+    [HideInInspector] public bool IsAttacking;
+
+    [Header("Block Variables")]
+    [SerializeField] private GameObject _shieldObject;
+    [SerializeField] [Tooltip("Divider; if you take 2, the damage is only half.")] private float _blockDamageDivider;
+    [SerializeField] [Tooltip("Divider; if you take 2, the speed  is only half.")] private float _blockSpeedDivider;
+    private bool _isBlocking;
 
     [Header("User Interface")]
     [SerializeField] private Slider _healthbar;
 
-    /**
-     * Crisp Movement
-     * Animations
-     * Attack
-
-     * Swords/weapons
-     * monster
-     * sprites
-     */
-
     public static PlayerController Instance;
 
+    private bool IsInSpecialAction { get { return !IsGrounded() || _isDashing || _isWallJumping || _isWallSliding || IsAttacking; } }
+    private Animator _animator;
+
     void Start() {
+        _animator = GetComponentInChildren<Animator>();
         _rb = GetComponent<Rigidbody2D>();
 
         _healthbar.maxValue = _health;
@@ -76,20 +72,31 @@ public class PlayerController : MonoBehaviour {
         Jump();
         Dash();
         Punch();
+        Block();
         WallSliding();
         WallJumping();
     }
     #region Movement
     private float _horizontalInput;
     private void Movement() {
-        if(_isWallJumping || _isDashing) {
+        if(_isWallJumping || _isDashing || IsAttacking) {
             return;
         }
 
         _horizontalInput = Input.GetAxis("Horizontal");
 
-        if(Input.GetKey(KeyCode.LeftShift)) {
+        if(_isBlocking) {
+            _horizontalInput /= _blockSpeedDivider;
+        }
+
+        if(Input.GetKey(KeyCode.LeftShift) && !_isBlocking) {
             _horizontalInput *= _sprintModifier;
+        }
+
+        if(_horizontalInput == 0) {
+            _animator.Play("Idle");
+        } else {
+            _animator.Play("Run");
         }
 
         _rb.velocity = new Vector2(_horizontalInput * _movementSpeed, _rb.velocity.y);
@@ -97,6 +104,7 @@ public class PlayerController : MonoBehaviour {
 
     private void Jump() {
         if(Input.GetButtonDown("Jump") && IsGrounded()) {
+            _animator.Play("Jump");
             _rb.AddForce(Vector2.up * _jumpForce, ForceMode2D.Impulse);
         }
     }
@@ -142,17 +150,25 @@ public class PlayerController : MonoBehaviour {
         Destroy(newShadow, 1f);
         _shadows.Insert(0, newShadow);
 
-        Color c = newShadow.GetComponent<SpriteRenderer>().color;
+        newShadow.transform.localScale = new Vector3(-transform.localScale.x, 1, 1);
+
+        float alpha = 0.8f;
         foreach(GameObject g in _shadows) {
-            c.a -= 0.1f;
-            g.GetComponent<SpriteRenderer>().color = c;
-            foreach(Transform t in g.transform) {
-                if(t.TryGetComponent<SpriteRenderer>(out SpriteRenderer sr)) {
-                    sr.color = c;
-                }
+            alpha -= 0.2f;
+            DecreaseAllTransforms(g.transform, alpha);
+        }
+
+        void DecreaseAllTransforms(Transform parent, float alpha) {
+            foreach(Transform t in parent) {
+                DecreaseAllTransforms(t, alpha);
+            }
+            if(parent.TryGetComponent(out SpriteRenderer sr)) {
+                sr.color = new Color(1f, 1f, 1f, alpha);
             }
         }
     }
+
+    
 
     private bool _isFacingRight = true;
     private void FlipPlayer() {
@@ -218,31 +234,31 @@ public class PlayerController : MonoBehaviour {
     #endregion
     #region Fight Stuff
     private void Punch() {
+        if(!_animator.GetCurrentAnimatorStateInfo(0).IsName("Attack")) {
+            IsAttacking = false;
+        }
+
         _punchCooldownCounter += Time.deltaTime;
-        if(Input.GetKeyDown(KeyCode.X)) {
+        if(Input.GetMouseButtonDown(0)) {
             if(_punchCooldownCounter >= _punchCooldown) {
                 _punchCooldownCounter = 0;
-
-                Vector3 dir = new Vector3(_isFacingRight ? 1 : -1, 0, 0);
-                RaycastHit2D hit = Physics2D.Raycast(_punchStartPosition.position, dir, _punchRange, _punchableLayer);
-                _punchLine.enabled = true;
-                _punchLine.SetPosition(0, _punchStartPosition.position);
-                _punchLine.SetPosition(1, dir * _punchRange + _punchStartPosition.position);
-                CancelInvoke(nameof(RemovePunchLine));
-                Invoke(nameof(RemovePunchLine), _punchLineTime);
-                if(hit) {
-                    if(hit.transform.TryGetComponent(out Punchable pa)) {
-                        pa.GetPunched(transform, _punchDamage);
-                    }
-                }
+                IsAttacking = true;
+                _animator.Play("Attack");
+                _rb.velocity = Vector2.zero;
             }
         }
     }
-    private void RemovePunchLine() {
-        _punchLine.enabled = false;
+    private void StopAttacking() {
+
     }
+
     public void DoDamage(int damage) {
-        _health -= damage;
+        if(_isBlocking) {
+            _health -= (int) (damage / _blockDamageDivider);
+        } else {
+            _health -= damage;
+        }
+
         _healthbar.value = _health;
         if(_health < 0f) {
             Debug.LogWarning("Player died :(");
@@ -257,7 +273,6 @@ public class PlayerController : MonoBehaviour {
         }
     }
     #endregion
-
     #region Powerups
     public void SetPowerup(float duration, float strength, PowerupType type) { 
         switch(type) {
@@ -266,8 +281,8 @@ public class PlayerController : MonoBehaviour {
                 StartCoroutine(ResetPowerup(duration, strength, type));
                 break;
             case PowerupType.AttackRange:
-                _punchRange += strength;
-                StartCoroutine(ResetPowerup(duration, strength, type));
+           //     _punchRange += strength;
+           //     StartCoroutine(ResetPowerup(duration, strength, type));
                 break;
             case PowerupType.Health:
                 _health += (int)strength;
@@ -282,11 +297,24 @@ public class PlayerController : MonoBehaviour {
                 _movementSpeed -= strength;
                 break;
             case PowerupType.AttackRange:
-                _punchRange -= strength;
+         //       _punchRange -= strength;
                 break;
             default:
                 break;
         }
+    }
+    #endregion
+
+    #region Blocking
+    private void Block() { 
+        // right click
+        if(Input.GetMouseButton(1) && !IsInSpecialAction) {
+            _isBlocking = true;
+        } else {
+            _isBlocking = false;
+        }
+
+        _shieldObject.SetActive(_isBlocking);
     }
     #endregion
 }

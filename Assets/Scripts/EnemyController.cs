@@ -39,6 +39,15 @@ public class EnemyController : MonoBehaviour {
         }
     }
 
+    private void OnTriggerEnter2D(Collider2D other) {
+        if(other.gameObject.CompareTag("Player")) {
+            if(PlayerController.Instance.IsAttacking) {
+                DoDamage(PlayerController.Instance.transform, PlayerController.Instance.PunchDamage);
+            }
+        }
+    }
+
+
     public void DoDamage(Transform sender, int amount) {
         _health -= amount;
         _enemyHealthBar.value = _health;
