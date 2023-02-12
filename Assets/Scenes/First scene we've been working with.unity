@@ -2393,6 +2393,7 @@ MonoBehaviour:
   _wallJumpDuration: 0.4
   PunchDamage: 30
   _punchCooldown: 0
+  IsAttacking: 0
   _shieldObject: {fileID: 121838997}
   _blockDamageDivider: 2
   _blockSpeedDivider: 2
@@ -3418,6 +3419,7 @@ MonoBehaviour:
   _wallJumpDuration: 0.4
   PunchDamage: 0
   _punchCooldown: 0
+  IsAttacking: 0
   _shieldObject: {fileID: 0}
   _blockDamageDivider: 0
   _blockSpeedDivider: 0
