@@ -49,6 +49,9 @@ public class PlayerController : MonoBehaviour {
     [SerializeField] [Tooltip("Divider; if you take 2, the speed  is only half.")] private float _blockSpeedDivider;
     private bool _isBlocking;
 
+    [Header("Aim Variables")]
+    [SerializeField] private Transform _swordRoot;
+
     [Header("User Interface")]
     [SerializeField] private Slider _healthbar;
 
@@ -73,9 +76,11 @@ public class PlayerController : MonoBehaviour {
         Dash();
         Punch();
         Block();
+        AimTowardsMouse();
         WallSliding();
         WallJumping();
     }
+
     #region Movement
     private float _horizontalInput;
     private void Movement() {
@@ -315,6 +320,21 @@ public class PlayerController : MonoBehaviour {
         }
 
         _shieldObject.SetActive(_isBlocking);
+    }
+    #endregion
+
+    #region Aim Direction
+    private void AimTowardsMouse() {
+        Vector3 mousePos = Input.mousePosition;
+        Vector3 screenPoint = Camera.main.WorldToScreenPoint(transform.localPosition);
+
+        Vector2 offset = new(mousePos.x - screenPoint.x, mousePos.y - screenPoint.y);
+        float angle = Mathf.Atan2(offset.y, offset.x) * Mathf.Rad2Deg;
+        if(!_isFacingRight) {
+            angle -= 180;
+        }
+
+        _swordRoot.rotation = Quaternion.Euler(0, 0, angle);
     }
     #endregion
 }
